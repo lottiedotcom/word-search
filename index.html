@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cute Word Search Maker</title>
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Added html2canvas to allow saving the game as image files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
             --bg-color: #fce4ec;
@@ -98,8 +100,8 @@
         }
         button:hover { background-color: var(--accent-hover); }
         
-        .print-btn { background-color: #4fc3f7; color: #fff;}
-        .print-btn:hover { background-color: #29b6f6; }
+        .download-btn { background-color: #4fc3f7; color: #fff;}
+        .download-btn:hover { background-color: #29b6f6; }
 
         .key-btn { background-color: #ffca28; color: #4a4a4a; }
         .key-btn:hover { background-color: #ffb300; }
@@ -182,40 +184,6 @@
         }
         
         .error { color: red; font-size: 0.9em; margin-top: 10px; display: none; }
-
-        /* --- Print Styling --- */
-        @media print {
-            @page { margin: 0.5in; }
-            body {
-                background: white;
-                display: block;
-                padding: 0;
-            }
-            .controls { display: none !important; }
-            
-            .main-content {
-                display: block;
-                width: 100%;
-                max-width: 100%;
-            }
-
-            .game-area {
-                box-shadow: none;
-                margin: 0 auto;
-                padding: 0;
-                width: 100%;
-            }
-
-            #key-area {
-                page-break-before: always; 
-                margin-top: 0.5in;
-            }
-
-            * {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-        }
     </style>
 </head>
 <body>
@@ -249,7 +217,7 @@
 
         <button onclick="generateGame()">Generate / Regenerate ✨</button>
         <button class="key-btn" onclick="toggleKey()">🔑 Show / Hide Key</button>
-        <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+        <button class="download-btn" onclick="downloadFiles()">⬇️ Download Game & Key</button>
         <div id="error-msg" class="error"></div>
     </div>
 
@@ -276,7 +244,7 @@
         let numCols = 15;
         
         let wordsToFind = [];
-        let displayWords = {}; // Keeps track of how the word should visually look (with spaces)
+        let displayWords = {}; 
         let foundWordsList = [];
         
         let isDragging = false;
@@ -301,18 +269,16 @@
             numCols = cInput;
             numRows = rInput;
             
-            // Clean up the input words
             let rawArray = rawWords.split(/[\n,]+/).map(w => w.trim().toUpperCase()).filter(w => w.length > 0);
             
             wordsToFind = [];
             displayWords = {};
             
             rawArray.forEach(w => {
-                // Remove spaces and punctuation for placing in the grid
                 let searchWord = w.replace(/[^A-Z]/g, ''); 
                 if (searchWord.length > 0) {
                     wordsToFind.push(searchWord);
-                    displayWords[searchWord] = w; // Save original for the word list at the bottom
+                    displayWords[searchWord] = w; 
                 }
             });
 
@@ -463,7 +429,7 @@
                 let span = document.createElement('span');
                 span.className = 'word-item';
                 span.id = `word-${word}`;
-                span.innerText = displayWords[word]; // Displays with spaces
+                span.innerText = displayWords[word]; 
                 listEl.appendChild(span);
             });
         }
@@ -547,6 +513,56 @@
             const err = document.getElementById('error-msg');
             err.innerText = msg;
             err.style.display = 'block';
+        }
+
+        /* --- New Download Logic --- */
+        async function downloadFiles() {
+            if (grid.length === 0) return;
+            
+            const btn = document.querySelector('.download-btn');
+            btn.innerText = "⏳ Processing...";
+            btn.style.pointerEvents = "none";
+
+            const gameArea = document.getElementById('game-area');
+            const keyArea = document.getElementById('key-area');
+            const originalKeyDisplay = keyArea.style.display;
+            
+            // Briefly force the key to show so it can be captured
+            keyArea.style.display = 'flex';
+            
+            // A tiny timeout allows the browser to actually render the key before capturing
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            try {
+                // 1. Snapshot Game
+                const gameCanvas = await html2canvas(gameArea, { backgroundColor: '#ffffff', scale: 2 });
+                triggerDownload(gameCanvas.toDataURL('image/png'), 'word-search.png');
+
+                // 2. Wait half a second so the browser doesn't block the second download
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // 3. Snapshot Key
+                const keyCanvas = await html2canvas(keyArea, { backgroundColor: '#ffffff', scale: 2 });
+                triggerDownload(keyCanvas.toDataURL('image/png'), 'word-search-key.png');
+
+            } catch (err) {
+                console.error("Download failed:", err);
+                alert("Oops! Something went wrong while saving.");
+            } finally {
+                // Reset everything
+                keyArea.style.display = originalKeyDisplay;
+                btn.innerText = "⬇️ Download Game & Key";
+                btn.style.pointerEvents = "auto";
+            }
+        }
+
+        function triggerDownload(dataUrl, filename) {
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         window.onload = () => generateGame();
