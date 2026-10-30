@@ -56,7 +56,6 @@
         
         textarea { height: 120px; resize: vertical; }
 
-        /* Layout Section styling matching the provided image */
         .layout-inputs {
             display: flex;
             align-items: center;
@@ -92,8 +91,16 @@
             width: 100%;
             transition: background 0.3s;
             font-family: 'Quicksand', sans-serif;
+            margin-bottom: 10px;
         }
         button:hover { background-color: var(--accent-hover); }
+        
+        .print-btn {
+            background-color: #4fc3f7;
+        }
+        .print-btn:hover {
+            background-color: #29b6f6;
+        }
 
         /* --- Game Area --- */
         .game-area {
@@ -116,7 +123,7 @@
             padding: 10px;
             border-radius: 10px;
             user-select: none;
-            touch-action: none; /* helps with mobile dragging */
+            touch-action: none;
         }
 
         .cell {
@@ -160,6 +167,30 @@
         }
         
         .error { color: red; font-size: 0.9em; margin-top: 10px; display: none; }
+
+        /* --- Print Styling --- */
+        @media print {
+            @page { margin: 0.5in; }
+            body {
+                background: white;
+                display: block; /* Removes flexbox layout to allow natural page flow */
+                padding: 0;
+            }
+            .controls {
+                display: none !important; /* Hides the sidebar completely */
+            }
+            .game-area {
+                box-shadow: none;
+                margin: 0 auto;
+                padding: 0;
+                width: 100%;
+            }
+            /* Forces the printer to keep the cute background colors */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -192,10 +223,11 @@
         </div>
 
         <button onclick="generateGame()">Generate / Regenerate ✨</button>
+        <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
         <div id="error-msg" class="error"></div>
     </div>
 
-    <!-- Playable Game Area -->
+    <!-- Playable & Printable Game Area -->
     <div class="game-area" id="game-area" style="display:none;">
         <h1 id="display-title"></h1>
         <div id="word-search-grid"></div>
@@ -209,7 +241,6 @@
         let wordsToFind = [];
         let foundWordsList = [];
         
-        // Interaction variables
         let isDragging = false;
         let startCell = null;
         let currentPath = [];
@@ -232,7 +263,6 @@
             numCols = cInput;
             numRows = rInput;
             
-            // Clean up word list
             wordsToFind = rawWords.split(/[\n,]+/).map(w => w.trim().toUpperCase()).filter(w => w.length > 0);
             foundWordsList = [];
             
@@ -242,11 +272,9 @@
                 return;
             }
 
-            // Init grid
             grid = Array.from({length: numRows}, () => Array(numCols).fill(''));
             let allPlaced = true;
 
-            // Sort words by length descending to place biggest first
             wordsToFind.sort((a, b) => b.length - a.length);
 
             for (let word of wordsToFind) {
@@ -268,8 +296,8 @@
 
         function placeWord(word) {
             const directions = [
-                [0, 1], [1, 0], [1, 1], [-1, 1],  // E, S, SE, NE
-                [0, -1], [-1, 0], [-1, -1], [1, -1] // W, N, NW, SW
+                [0, 1], [1, 0], [1, 1], [-1, 1],
+                [0, -1], [-1, 0], [-1, -1], [1, -1]
             ];
             
             let placed = false;
@@ -327,7 +355,6 @@
                     cell.dataset.r = r;
                     cell.dataset.c = c;
                     
-                    // Mouse events for playing
                     cell.addEventListener('mousedown', handleDragStart);
                     cell.addEventListener('mouseenter', handleDragEnter);
                     
@@ -335,7 +362,6 @@
                 }
             }
             
-            // Global mouseup to stop dragging even if mouse leaves grid
             window.addEventListener('mouseup', handleDragEnd);
         }
 
@@ -350,8 +376,6 @@
                 listEl.appendChild(span);
             });
         }
-
-        /* --- Playable Interaction Logic --- */
         
         function handleDragStart(e) {
             isDragging = true;
@@ -369,7 +393,6 @@
             let dR = endR - startCell.r;
             let dC = endC - startCell.c;
             
-            // Snap to straight lines (horizontal, vertical, perfect diagonal)
             let absR = Math.abs(dR);
             let absC = Math.abs(dC);
             
@@ -435,7 +458,6 @@
             err.style.display = 'block';
         }
 
-        // Generate an initial game on load
         window.onload = () => generateGame();
     </script>
 </body>
