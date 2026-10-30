@@ -3,31 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cute Word Search Maker</title>
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
-    <!-- Added html2canvas to allow saving the game as image files -->
+    <title>Elegant Word Search Maker</title>
+    <!-- Elegant, gothic-leaning serif fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
-            --bg-color: #fce4ec;
+            --bg-color: #f4f4f4;
             --panel-bg: #ffffff;
-            --text-main: #4a4a4a;
-            --accent: #f06292;
-            --accent-hover: #e91e63;
-            --highlight: #b2ebf2;
-            --found: #c8e6c9;
-            --key-color: #ffe082;
-            --border-color: #bdbdbd;
+            --text-main: #000000;
+            --accent: #000000;
+            --accent-hover: #333333;
+            --highlight: #e0e0e0;
+            --found: #d6d6d6;
+            --border-color: #000000;
         }
 
         body {
-            font-family: 'Quicksand', sans-serif;
+            font-family: 'Cormorant Garamond', serif;
             background-color: var(--bg-color);
+            /* Halftone dot pattern for the web background */
+            background-image: radial-gradient(#b0b0b0 1px, transparent 1px);
+            background-size: 14px 14px;
             color: var(--text-main);
             margin: 0;
             padding: 20px;
             display: flex;
-            gap: 20px;
+            gap: 30px;
             flex-wrap: wrap;
             justify-content: center;
             align-items: flex-start;
@@ -37,26 +39,41 @@
         .controls {
             background: var(--panel-bg);
             padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 2px solid var(--border-color);
             width: 300px;
             position: sticky;
             top: 20px;
+            box-shadow: 6px 6px 0px rgba(0,0,0,1); /* Brutalist/Print block shadow */
         }
 
-        h2 { margin-top: 0; color: var(--accent); }
+        h2 { 
+            margin-top: 0; 
+            font-family: 'Cinzel', serif;
+            font-size: 1.5em;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
         
         .form-group { margin-bottom: 20px; }
-        label { display: block; font-weight: 700; margin-bottom: 5px; font-size: 1.1em;}
+        label { 
+            display: block; 
+            font-weight: 700; 
+            margin-bottom: 5px; 
+            font-size: 1.2em;
+            font-family: 'Cinzel', serif;
+        }
         
-        input[type="text"], textarea, select {
+        input[type="text"], textarea, select, input[type="number"] {
             width: 100%;
             padding: 10px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-family: 'Quicksand', sans-serif;
-            font-size: 1em;
+            border: 1px solid var(--border-color);
+            border-radius: 0; /* Sharp corners for print aesthetic */
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.1em;
+            font-weight: 600;
             box-sizing: border-box;
+            background: #fff;
         }
         
         textarea { height: 120px; resize: vertical; }
@@ -67,72 +84,66 @@
             gap: 10px;
             margin-bottom: 10px;
         }
-        .layout-inputs input[type="number"] {
-            width: 70px;
-            padding: 8px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 1em;
-            text-align: center;
-            font-family: 'Quicksand', sans-serif;
-        }
-        .layout-select {
-            width: 150px;
-            padding: 8px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 1em;
-        }
+        .layout-inputs input[type="number"] { text-align: center; }
 
         button {
             background-color: var(--accent);
             color: white;
-            border: none;
+            border: 2px solid var(--border-color);
             padding: 12px 20px;
-            border-radius: 8px;
             font-size: 1.1em;
             font-weight: 700;
+            font-family: 'Cinzel', serif;
             cursor: pointer;
             width: 100%;
-            transition: background 0.3s;
-            font-family: 'Quicksand', sans-serif;
+            transition: all 0.2s;
             margin-bottom: 10px;
+            letter-spacing: 1px;
         }
         button:hover { background-color: var(--accent-hover); }
         
-        .download-btn { background-color: #4fc3f7; color: #fff;}
-        .download-btn:hover { background-color: #29b6f6; }
+        .download-btn { background-color: #fff; color: #000; }
+        .download-btn:hover { background-color: #f0f0f0; }
 
-        .key-btn { background-color: #ffca28; color: #4a4a4a; }
-        .key-btn:hover { background-color: #ffb300; }
+        .key-btn { background-color: #fff; color: #000; border-style: dashed; }
+        .key-btn:hover { background-color: #f0f0f0; }
 
         /* --- Game & Key Areas --- */
         .main-content {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 40px;
             max-width: 800px;
         }
 
         .game-area {
             background: var(--panel-bg);
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            padding: 40px;
+            /* Classic book framing */
+            border: 4px solid var(--border-color);
+            outline: 1px solid var(--border-color);
+            outline-offset: -8px;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
 
-        h1 { margin-top: 0; color: var(--text-main); font-size: 2.5em; text-align: center; }
-        .key-title { color: #f57c00; }
+        h1 { 
+            margin-top: 10px; 
+            margin-bottom: 30px;
+            font-family: 'Cinzel', serif;
+            font-size: 2.8em; 
+            text-align: center; 
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .key-title { font-size: 2em; margin-bottom: 20px;}
 
         .grid-container {
             display: grid;
-            gap: 2px;
+            gap: 0px; /* Removed gap for a tighter print look */
             background: #fff;
             padding: 10px;
-            border-radius: 10px;
             user-select: none;
             touch-action: none;
         }
@@ -143,65 +154,72 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2em;
+            font-size: 1.5em;
             font-weight: 700;
             cursor: pointer;
-            border-radius: 6px;
             text-transform: uppercase;
+            color: #000;
             transition: background 0.2s;
         }
         
         /* Playable grid styles */
-        #word-search-grid .cell:hover { background-color: #f5f5f5; }
-        #word-search-grid .cell.selected { background-color: var(--highlight); color: #00838f; }
-        #word-search-grid .cell.found { background-color: var(--found); color: #2e7d32; }
+        #word-search-grid .cell:hover { background-color: #f0f0f0; }
+        #word-search-grid .cell.selected { background-color: var(--highlight); }
+        #word-search-grid .cell.found { background-color: var(--found); }
 
-        /* Key grid styles */
+        /* Key grid styles - High contrast for print */
         #key-grid { cursor: default; }
-        .cell.key-faded { opacity: 0.15; }
-        .cell.key-highlight { background-color: var(--key-color); color: #d84315; }
+        .cell.key-faded { color: #e0e0e0; } /* very light gray so answers pop */
+        .cell.key-highlight { 
+            color: #000; 
+            font-weight: 900; 
+            text-decoration: underline;
+            text-decoration-thickness: 2px;
+        }
 
         .word-list {
-            margin-top: 20px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            justify-content: center;
+            margin-top: 40px;
+            width: 100%;
+            /* Organizes words into clean, readable columns */
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            text-align: center;
+            border-top: 1px solid #000;
+            padding-top: 20px;
         }
 
         .word-item {
-            font-size: 1.2em;
+            font-size: 1.3em;
             font-weight: 700;
-            padding: 5px 10px;
-            background: #eee;
-            border-radius: 8px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
             transition: all 0.3s;
         }
         .word-item.found-word {
             text-decoration: line-through;
-            background: var(--found);
-            color: #2e7d32;
+            color: #888;
         }
         
-        .error { color: red; font-size: 0.9em; margin-top: 10px; display: none; }
+        .error { color: red; font-size: 1em; font-family: 'Cinzel', serif; margin-top: 10px; display: none; }
     </style>
 </head>
 <body>
 
     <!-- Sidebar Settings -->
     <div class="controls">
-        <h2>✨ Setup</h2>
+        <h2>Setup</h2>
         
         <div class="form-group">
             <label>Title</label>
-            <input type="text" id="title-input" value="My Cute Word Search">
+            <input type="text" id="title-input" value="Gothic Whispers">
         </div>
 
         <div class="form-group">
             <label>Layout</label>
             <div class="layout-inputs">
                 <input type="number" id="cols-input" value="15" min="5" max="30">
-                <span>&times;</span>
+                <span style="font-family: 'Cinzel', serif; font-weight: bold;">&times;</span>
                 <input type="number" id="rows-input" value="15" min="5" max="30">
             </div>
             <select id="shape-input" class="layout-select">
@@ -211,13 +229,13 @@
         </div>
 
         <div class="form-group">
-            <label>Words (comma or new line separated)</label>
-            <textarea id="words-input">KITTEN, PUPPY, SPARKLE, MAGIC, RAINBOW, CLOUD, STAR, SUNSHINE, SMILE, FLOWER</textarea>
+            <label>Words</label>
+            <textarea id="words-input">VAMPIRE, CASTLE, MIDNIGHT, SHADOW, RAVEN, COBWEB, CANDLE, PHANTOM, REQUIEM, VELVET</textarea>
         </div>
 
-        <button onclick="generateGame()">Generate / Regenerate ✨</button>
-        <button class="key-btn" onclick="toggleKey()">🔑 Show / Hide Key</button>
-        <button class="download-btn" onclick="downloadFiles()">⬇️ Download Game & Key</button>
+        <button onclick="generateGame()">Generate Puzzle</button>
+        <button class="key-btn" onclick="toggleKey()">Show / Hide Key</button>
+        <button class="download-btn" onclick="downloadFiles()">Download Pages</button>
         <div id="error-msg" class="error"></div>
     </div>
 
@@ -299,7 +317,7 @@
             for (let word of wordsToFind) {
                 if (!placeWord(word)) {
                     allPlaced = false;
-                    showError(`Grid too small or too crowded! Couldn't fit: ${displayWords[word]}`);
+                    showError(`Grid too small or crowded for: ${displayWords[word]}`);
                     return; 
                 }
             }
@@ -496,10 +514,6 @@
                 cell.classList.add('found');
             });
             document.getElementById(`word-${word}`).classList.add('found-word');
-            
-            if (foundWordsList.length === wordsToFind.length) {
-                setTimeout(() => alert("Yay! You found all the words! 🥳"), 300);
-            }
             currentPath = [];
         }
 
@@ -515,33 +529,28 @@
             err.style.display = 'block';
         }
 
-        /* --- New Download Logic --- */
         async function downloadFiles() {
             if (grid.length === 0) return;
             
             const btn = document.querySelector('.download-btn');
-            btn.innerText = "⏳ Processing...";
+            btn.innerText = "Processing...";
             btn.style.pointerEvents = "none";
 
             const gameArea = document.getElementById('game-area');
             const keyArea = document.getElementById('key-area');
             const originalKeyDisplay = keyArea.style.display;
             
-            // Briefly force the key to show so it can be captured
             keyArea.style.display = 'flex';
             
-            // A tiny timeout allows the browser to actually render the key before capturing
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Allow fonts and layout to settle before taking screenshot
+            await new Promise(resolve => setTimeout(resolve, 200));
 
             try {
-                // 1. Snapshot Game
                 const gameCanvas = await html2canvas(gameArea, { backgroundColor: '#ffffff', scale: 2 });
                 triggerDownload(gameCanvas.toDataURL('image/png'), 'word-search.png');
 
-                // 2. Wait half a second so the browser doesn't block the second download
                 await new Promise(resolve => setTimeout(resolve, 500));
 
-                // 3. Snapshot Key
                 const keyCanvas = await html2canvas(keyArea, { backgroundColor: '#ffffff', scale: 2 });
                 triggerDownload(keyCanvas.toDataURL('image/png'), 'word-search-key.png');
 
@@ -549,9 +558,8 @@
                 console.error("Download failed:", err);
                 alert("Oops! Something went wrong while saving.");
             } finally {
-                // Reset everything
                 keyArea.style.display = originalKeyDisplay;
-                btn.innerText = "⬇️ Download Game & Key";
+                btn.innerText = "Download Pages";
                 btn.style.pointerEvents = "auto";
             }
         }
