@@ -207,7 +207,6 @@
             }
 
             #key-area {
-                /* Forces the Answer Key to start on a brand new printed page */
                 page-break-before: always; 
                 margin-top: 0.5in;
             }
@@ -272,10 +271,12 @@
 
     <script>
         let grid = [];
-        let solutionMap = []; // Tracks which cells contain words for the key
+        let solutionMap = []; 
         let numRows = 15;
         let numCols = 15;
+        
         let wordsToFind = [];
+        let displayWords = {}; // Keeps track of how the word should visually look (with spaces)
         let foundWordsList = [];
         
         let isDragging = false;
@@ -300,7 +301,21 @@
             numCols = cInput;
             numRows = rInput;
             
-            wordsToFind = rawWords.split(/[\n,]+/).map(w => w.trim().toUpperCase()).filter(w => w.length > 0);
+            // Clean up the input words
+            let rawArray = rawWords.split(/[\n,]+/).map(w => w.trim().toUpperCase()).filter(w => w.length > 0);
+            
+            wordsToFind = [];
+            displayWords = {};
+            
+            rawArray.forEach(w => {
+                // Remove spaces and punctuation for placing in the grid
+                let searchWord = w.replace(/[^A-Z]/g, ''); 
+                if (searchWord.length > 0) {
+                    wordsToFind.push(searchWord);
+                    displayWords[searchWord] = w; // Save original for the word list at the bottom
+                }
+            });
+
             foundWordsList = [];
             
             document.getElementById('error-msg').style.display = 'none';
@@ -309,7 +324,6 @@
                 return;
             }
 
-            // Initialize both the playable grid and the solution tracker
             grid = Array.from({length: numRows}, () => Array(numCols).fill(''));
             solutionMap = Array.from({length: numRows}, () => Array(numCols).fill(false));
             
@@ -319,7 +333,7 @@
             for (let word of wordsToFind) {
                 if (!placeWord(word)) {
                     allPlaced = false;
-                    showError(`Grid too small or too crowded! Couldn't fit: ${word}`);
+                    showError(`Grid too small or too crowded! Couldn't fit: ${displayWords[word]}`);
                     return; 
                 }
             }
@@ -328,8 +342,6 @@
             
             document.getElementById('display-title').innerText = title;
             document.getElementById('game-area').style.display = 'flex';
-            
-            // Hide the key by default on new generations
             document.getElementById('key-area').style.display = 'none';
             
             renderGrid();
@@ -357,7 +369,7 @@
                         let currentR = r + i * dir[0];
                         let currentC = c + i * dir[1];
                         grid[currentR][currentC] = word[i];
-                        solutionMap[currentR][currentC] = true; // Mark as part of the solution
+                        solutionMap[currentR][currentC] = true;
                     }
                     placed = true;
                 }
@@ -411,7 +423,6 @@
             window.addEventListener('mouseup', handleDragEnd);
         }
 
-        // Renders the static answer key grid
         function renderKey() {
             const keyEl = document.getElementById('key-grid');
             keyEl.innerHTML = '';
@@ -439,7 +450,6 @@
             const keyArea = document.getElementById('key-area');
             if (keyArea.style.display === 'none' && grid.length > 0) {
                 keyArea.style.display = 'flex';
-                // Scroll down smoothly so the user sees it appeared
                 keyArea.scrollIntoView({ behavior: 'smooth' });
             } else {
                 keyArea.style.display = 'none';
@@ -453,7 +463,7 @@
                 let span = document.createElement('span');
                 span.className = 'word-item';
                 span.id = `word-${word}`;
-                span.innerText = word;
+                span.innerText = displayWords[word]; // Displays with spaces
                 listEl.appendChild(span);
             });
         }
