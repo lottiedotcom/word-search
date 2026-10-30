@@ -130,8 +130,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            position: relative; /* Required for dragging halftone images */
-            overflow: hidden; /* Clips dragged images at the border edge */
+            position: relative; 
+            overflow: hidden; 
         }
 
         h1 { 
@@ -177,11 +177,13 @@
 
         #key-grid { cursor: default; }
         .cell.key-faded { color: #e0e0e0; }
+        
+        /* Updated Answer Key Highlight */
         .cell.key-highlight { 
             color: #000; 
             font-weight: 900; 
-            text-decoration: underline;
-            text-decoration-thickness: 2px;
+            background-color: #cccccc; /* Solid gray block highlight */
+            border-radius: 4px;
         }
 
         .word-list {
@@ -214,8 +216,9 @@
         .halftone-sticker {
             position: absolute;
             cursor: grab;
-            z-index: 1; /* Puts it behind the letters so the game remains playable */
-            opacity: 0.8; /* Subtle transparency so words can be read over it */
+            z-index: 1; 
+            opacity: 0.8; 
+            touch-action: none; /* Prevents screen scrolling while dragging image on mobile */
         }
         .halftone-sticker:active {
             cursor: grabbing;
@@ -257,13 +260,13 @@
 
         <div class="form-group">
             <label>Words</label>
-            <textarea id="words-input">VAMPIRE, CASTLE, MIDNIGHT, SHADOW, RAVEN, COBWEB, CANDLE, PHANTOM, REQUIEM, VELVET</textarea>
+            <textarea id="words-input" placeholder="Type words here, separated by commas..."></textarea>
         </div>
 
         <button onclick="generateGame()">Generate Puzzle</button>
         <button class="key-btn" onclick="toggleKey()">Show / Hide Key</button>
 
-        <!-- NEW: Halftone Decor Upload Section -->
+        <!-- Halftone Decor Upload Section -->
         <div class="form-group" style="border-top: 2px solid #000; padding-top: 20px; margin-top: 20px;">
             <label>Add Halftone Decor</label>
             <span class="file-upload-label">Dot Size (Small to Large)</span>
@@ -271,7 +274,7 @@
             
             <input type="file" id="image-upload" accept="image/*" style="font-size: 0.85em; padding: 5px; margin-top: 10px;">
             <p style="font-size: 0.85em; color: #555; margin-top: 10px; line-height: 1.3;">
-                Upload an image to turn it into a printable dot pattern. Drag it to move. Double-click it to delete.
+                Upload an image. Use the slider to live-update the dots. Drag to move. Double-tap to delete.
             </p>
         </div>
 
@@ -281,7 +284,7 @@
 
     <!-- Main Content Area -->
     <div class="main-content">
-        <!-- Playable Game Area -->
+        <!-- Playable Game Area (Hidden until generated) -->
         <div class="game-area" id="game-area" style="display:none;">
             <h1 id="display-title"></h1>
             <div id="word-search-grid" class="grid-container"></div>
@@ -342,7 +345,7 @@
             
             document.getElementById('error-msg').style.display = 'none';
             if(wordsToFind.length === 0) {
-                showError("Please enter at least one word.");
+                showError("Please enter at least one word in the box.");
                 return;
             }
 
@@ -565,27 +568,37 @@
             err.style.display = 'block';
         }
 
-        /* --- NEW: Image Upload & Halftone Processing --- */
+        /* --- Image Upload & Halftone Processing (Now Mobile Friendly!) --- */
+        let lastImageSrc = null;
+        let activeSticker = null;
+
         document.getElementById('image-upload').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
             reader.onload = function(event) {
-                createHalftoneSticker(event.target.result);
+                lastImageSrc = event.target.result;
+                createHalftoneSticker(lastImageSrc);
             };
             reader.readAsDataURL(file);
-            
-            // Clear the input so you can upload the same image again if wanted
-            e.target.value = '';
+            e.target.value = ''; // Reset input
         });
 
-        function createHalftoneSticker(imageSrc) {
+        // LIVE SLIDER: Updates sticker dot size immediately
+        document.getElementById('dot-size').addEventListener('input', function() {
+            if (lastImageSrc && activeSticker) {
+                const currentLeft = activeSticker.style.left;
+                const currentTop = activeSticker.style.top;
+                createHalftoneSticker(lastImageSrc, currentLeft, currentTop);
+            }
+        });
+
+        function createHalftoneSticker(imageSrc, keepLeft, keepTop) {
             const img = new Image();
             img.onload = function() {
                 const dotSize = parseInt(document.getElementById('dot-size').value);
                 
-                // Scale image down if it's too large so the halftone process doesn't lag
                 const maxDim = 300;
                 let w = img.width;
                 let h = img.height;
@@ -594,7 +607,6 @@
                     else { w = w * (maxDim / h); h = maxDim; }
                 }
 
-                // Draw to offscreen canvas to extract pixels
                 const offCanvas = document.createElement('canvas');
                 offCanvas.width = w;
                 offCanvas.height = h;
@@ -602,20 +614,17 @@
                 ctx.drawImage(img, 0, 0, w, h);
                 const imageData = ctx.getImageData(0, 0, w, h).data;
 
-                // Create the final output canvas for dots
                 const finalCanvas = document.createElement('canvas');
                 finalCanvas.width = w;
                 finalCanvas.height = h;
                 const fCtx = finalCanvas.getContext('2d');
-                fCtx.fillStyle = '#000000'; // Black dots
+                fCtx.fillStyle = '#000000'; 
 
-                // Halftone Algorithm
                 for(let y = 0; y < h; y += dotSize) {
                     for(let x = 0; x < w; x += dotSize) {
                         let totalLum = 0;
                         let count = 0;
                         
-                        // Check average brightness of the block
                         for(let dy = 0; dy < dotSize; dy++) {
                             for(let dx = 0; dx < dotSize; dx++) {
                                 const px = x + dx;
@@ -628,10 +637,9 @@
                                     const a = imageData[i+3];
                                     
                                     if (a > 128) {
-                                        // Standard relative luminance formula
                                         totalLum += (0.299 * r + 0.587 * g + 0.114 * b);
                                     } else {
-                                        totalLum += 255; // Treat transparent as white
+                                        totalLum += 255; 
                                     }
                                     count++;
                                 }
@@ -641,7 +649,6 @@
                         const avgLum = totalLum / count;
                         const darkness = 255 - avgLum;
                         
-                        // Draw dot if not purely white
                         if (darkness > 20) {
                             const maxRadius = dotSize / 1.5;
                             const radius = maxRadius * (darkness / 255);
@@ -652,51 +659,88 @@
                     }
                 }
 
-                spawnDraggableImage(finalCanvas.toDataURL());
+                // Remove the old sticker if we are resizing dots
+                if (activeSticker) {
+                    activeSticker.remove();
+                }
+
+                spawnDraggableImage(finalCanvas.toDataURL(), keepLeft, keepTop);
             };
             img.src = imageSrc;
         }
 
-        function spawnDraggableImage(dataUrl) {
+        function spawnDraggableImage(dataUrl, keepLeft, keepTop) {
             const gameArea = document.getElementById('game-area');
             const sticker = document.createElement('img');
             sticker.src = dataUrl;
             sticker.className = 'halftone-sticker';
             
-            // Randomly place near top left
-            sticker.style.left = Math.floor(Math.random() * 50) + 20 + 'px';
-            sticker.style.top = Math.floor(Math.random() * 50) + 20 + 'px';
+            if (keepLeft !== undefined && keepTop !== undefined) {
+                sticker.style.left = keepLeft;
+                sticker.style.top = keepTop;
+            } else {
+                sticker.style.left = Math.floor(Math.random() * 50) + 20 + 'px';
+                sticker.style.top = Math.floor(Math.random() * 50) + 20 + 'px';
+            }
             
             gameArea.appendChild(sticker);
+            activeSticker = sticker;
 
-            // Drag logic
+            // Mobile & Desktop Dragging Logic
             let isDraggingSticker = false;
             let startX, startY, initialLeft, initialTop;
 
-            sticker.onmousedown = function(e) {
+            function startDrag(e) {
                 isDraggingSticker = true;
-                startX = e.clientX;
-                startY = e.clientY;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                startX = clientX;
+                startY = clientY;
                 initialLeft = parseInt(sticker.style.left) || 0;
                 initialTop = parseInt(sticker.style.top) || 0;
-                e.preventDefault(); 
-            };
+                if(e.cancelable) e.preventDefault(); 
+            }
 
-            window.addEventListener('mousemove', function(e) {
+            function doDrag(e) {
                 if (!isDraggingSticker) return;
-                const dx = e.clientX - startX;
-                const dy = e.clientY - startY;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const dx = clientX - startX;
+                const dy = clientY - startY;
                 sticker.style.left = (initialLeft + dx) + 'px';
                 sticker.style.top = (initialTop + dy) + 'px';
-            });
+                if(e.cancelable) e.preventDefault();
+            }
 
-            window.addEventListener('mouseup', function() {
+            function endDrag() {
                 isDraggingSticker = false;
+            }
+
+            sticker.addEventListener('mousedown', startDrag);
+            sticker.addEventListener('touchstart', startDrag, {passive: false});
+
+            window.addEventListener('mousemove', doDrag);
+            window.addEventListener('touchmove', doDrag, {passive: false});
+
+            window.addEventListener('mouseup', endDrag);
+            window.addEventListener('touchend', endDrag);
+
+            // Double Tap / Double Click to delete
+            let lastTap = 0;
+            sticker.addEventListener('touchend', function(e) {
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTap;
+                if (tapLength < 500 && tapLength > 0) {
+                    sticker.remove();
+                    if (activeSticker === sticker) activeSticker = null;
+                    e.preventDefault();
+                }
+                lastTap = currentTime;
             });
 
-            // Double click to delete
             sticker.ondblclick = function() {
                 sticker.remove();
+                if (activeSticker === sticker) activeSticker = null;
             };
         }
 
@@ -742,8 +786,6 @@
             link.click();
             document.body.removeChild(link);
         }
-
-        window.onload = () => generateGame();
     </script>
 </body>
 </html>
