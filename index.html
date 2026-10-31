@@ -119,12 +119,13 @@
             display: flex;
             flex-direction: column;
             gap: 40px;
-            max-width: 800px;
+            width: 100%;
+            max-width: 800px; /* Base preview size on screen */
         }
 
         .game-area {
             background: var(--panel-bg);
-            padding: 40px;
+            padding: 6%;
             border: 4px solid var(--border-color);
             outline: 1px solid var(--border-color);
             outline-offset: -8px;
@@ -133,43 +134,57 @@
             align-items: center;
             position: relative; 
             overflow: hidden; 
+            
+            /* Responsive Print Container Setup */
+            width: 100%;
+            box-sizing: border-box;
+            container-type: inline-size; /* Allows font sizes to scale perfectly with the box */
         }
 
         h1 { 
-            margin-top: 10px; 
-            margin-bottom: 30px;
+            margin-top: 0px; 
+            margin-bottom: 20px;
             font-family: 'Cinzel', serif;
-            font-size: 2.8em; 
+            font-size: max(24px, 6cqw); /* Scales perfectly with page size */
             text-align: center; 
             letter-spacing: 2px;
             text-transform: uppercase;
             z-index: 2;
         }
         
-        .key-title { font-size: 2em; margin-bottom: 20px;}
+        .key-title { font-size: max(20px, 5cqw); margin-bottom: 20px;}
 
-        .grid-container {
-            display: grid;
-            gap: 0px;
-            background: transparent;
-            padding: 10px;
-            user-select: none;
-            touch-action: none;
-            z-index: 2;
-        }
-
-        .cell {
-            width: 35px;
-            height: 35px;
+        .grid-wrapper {
+            width: 100%;
+            flex-grow: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5em;
+            z-index: 2;
+        }
+
+        .grid-container {
+            display: grid;
+            background: transparent;
+            user-select: none;
+            touch-action: none;
+            /* Container size constraints to ensure it never breaks out of the page */
+            max-width: 100%;
+            max-height: 100%;
+            container-type: inline-size;
+        }
+
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-weight: 700;
             cursor: pointer;
             text-transform: uppercase;
             color: #000;
             transition: background 0.2s;
+            /* Font size scales exactly relative to the number of columns to fit perfectly */
+            font-size: calc((100cqi / var(--num-cols)) * 0.65);
         }
         
         #word-search-grid .cell:hover { background-color: #f0f0f0; }
@@ -187,10 +202,10 @@
         }
 
         .word-list {
-            margin-top: 40px;
+            margin-top: 30px;
             width: 100%;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
             gap: 12px;
             text-align: center;
             border-top: 1px solid #000;
@@ -199,7 +214,7 @@
         }
 
         .word-item {
-            font-size: 1.3em;
+            font-size: max(12px, 2.5cqw);
             font-weight: 700;
             letter-spacing: 1px;
             text-transform: uppercase;
@@ -212,18 +227,15 @@
         
         .error { color: red; font-size: 1em; font-family: 'Cinzel', serif; margin-top: 10px; display: none; }
 
-        /* Draggable Halftone Styles - FIXED FOR STICKING */
         .halftone-sticker {
             position: absolute;
             cursor: grab;
-            z-index: 10; /* Put it ABOVE the text so it never gets stuck */
+            z-index: 10; 
             opacity: 0.85; 
-            mix-blend-mode: multiply; /* Makes it look like ink printed OVER the letters */
+            mix-blend-mode: multiply; 
             touch-action: none; 
         }
-        .halftone-sticker:active {
-            cursor: grabbing;
-        }
+        .halftone-sticker:active { cursor: grabbing; }
         
         .file-upload-label {
             display: block;
@@ -248,16 +260,21 @@
         </div>
 
         <div class="form-group">
-            <label>Layout</label>
+            <label>Page Size (Inches)</label>
+            <div class="layout-inputs">
+                <input type="number" id="page-w" value="5" min="2" max="20" step="0.5">
+                <span style="font-family: 'Cinzel', serif; font-weight: bold;">W &times; H</span>
+                <input type="number" id="page-h" value="7" min="2" max="20" step="0.5">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Grid Size</label>
             <div class="layout-inputs">
                 <input type="number" id="cols-input" value="15" min="5" max="30">
-                <span style="font-family: 'Cinzel', serif; font-weight: bold;">&times;</span>
+                <span style="font-family: 'Cinzel', serif; font-weight: bold;">Cols &times; Rows</span>
                 <input type="number" id="rows-input" value="15" min="5" max="30">
             </div>
-            <select id="shape-input" class="layout-select">
-                <option value="rectangle">Rectangle</option>
-                <option value="square">Square</option>
-            </select>
         </div>
 
         <div class="form-group">
@@ -293,14 +310,18 @@
         <!-- Playable Game Area (Hidden until generated) -->
         <div class="game-area" id="game-area" style="display:none;">
             <h1 id="display-title"></h1>
-            <div id="word-search-grid" class="grid-container"></div>
+            <div class="grid-wrapper">
+                <div id="word-search-grid" class="grid-container"></div>
+            </div>
             <div class="word-list" id="word-list"></div>
         </div>
 
         <!-- Answer Key Area -->
         <div class="game-area" id="key-area" style="display:none;">
             <h1 class="key-title">Answer Key</h1>
-            <div id="key-grid" class="grid-container"></div>
+            <div class="grid-wrapper">
+                <div id="key-grid" class="grid-container"></div>
+            </div>
         </div>
     </div>
 
@@ -319,20 +340,16 @@
         function generateGame() {
             const title = document.getElementById('title-input').value;
             let rawWords = document.getElementById('words-input').value;
-            let cInput = parseInt(document.getElementById('cols-input').value);
-            let rInput = parseInt(document.getElementById('rows-input').value);
-            let shape = document.getElementById('shape-input').value;
+            
+            numCols = parseInt(document.getElementById('cols-input').value) || 15;
+            numRows = parseInt(document.getElementById('rows-input').value) || 15;
 
-            if (shape === 'square') {
-                let maxDim = Math.max(cInput, rInput);
-                cInput = maxDim;
-                rInput = maxDim;
-                document.getElementById('cols-input').value = maxDim;
-                document.getElementById('rows-input').value = maxDim;
-            }
-
-            numCols = cInput;
-            numRows = rInput;
+            // Apply specific physical dimensions to the visual box
+            const pW = parseFloat(document.getElementById('page-w').value) || 8.5;
+            const pH = parseFloat(document.getElementById('page-h').value) || 11;
+            
+            document.getElementById('game-area').style.aspectRatio = `${pW} / ${pH}`;
+            document.getElementById('key-area').style.aspectRatio = `${pW} / ${pH}`;
             
             let rawArray = rawWords.split(/[\n,]+/).map(w => w.trim().toUpperCase()).filter(w => w.length > 0);
             
@@ -411,7 +428,6 @@
             for (let i = 0; i < word.length; i++) {
                 let newR = r + i * dir[0];
                 let newC = c + i * dir[1];
-                
                 if (newR < 0 || newR >= numRows || newC < 0 || newC >= numCols) return false;
                 if (grid[newR][newC] !== '' && grid[newR][newC] !== word[i]) return false;
             }
@@ -429,11 +445,18 @@
             }
         }
 
+        function applyGridStyles(el) {
+            el.style.gridTemplateColumns = `repeat(${numCols}, 1fr)`;
+            el.style.gridTemplateRows = `repeat(${numRows}, 1fr)`;
+            el.style.aspectRatio = `${numCols} / ${numRows}`;
+            // Let the cell size scale dynamically based on columns
+            el.style.setProperty('--num-cols', numCols);
+        }
+
         function renderGrid() {
             const gridEl = document.getElementById('word-search-grid');
             gridEl.innerHTML = '';
-            gridEl.style.gridTemplateColumns = `repeat(${numCols}, 35px)`;
-            gridEl.style.gridTemplateRows = `repeat(${numRows}, 35px)`;
+            applyGridStyles(gridEl);
 
             for (let r = 0; r < numRows; r++) {
                 for (let c = 0; c < numCols; c++) {
@@ -455,8 +478,7 @@
         function renderKey() {
             const keyEl = document.getElementById('key-grid');
             keyEl.innerHTML = '';
-            keyEl.style.gridTemplateColumns = `repeat(${numCols}, 35px)`;
-            keyEl.style.gridTemplateRows = `repeat(${numRows}, 35px)`;
+            applyGridStyles(keyEl);
 
             for (let r = 0; r < numRows; r++) {
                 for (let c = 0; c < numCols; c++) {
@@ -591,7 +613,6 @@
             e.target.value = ''; 
         });
 
-        // LIVE SLIDER: Dot Size
         document.getElementById('dot-size').addEventListener('input', function() {
             if (lastImageSrc && activeSticker) {
                 const currentLeft = activeSticker.style.left;
@@ -600,7 +621,6 @@
             }
         });
 
-        // NEW LIVE SLIDER: Image Scale
         document.getElementById('image-scale').addEventListener('input', function(e) {
             if (activeSticker) {
                 const origW = parseInt(activeSticker.dataset.origWidth);
@@ -688,7 +708,6 @@
             sticker.src = dataUrl;
             sticker.className = 'halftone-sticker';
             
-            // Set base sizes for the scale slider to work off of
             sticker.dataset.origWidth = origWidth;
             const currentScale = document.getElementById('image-scale').value;
             sticker.style.width = (origWidth * (currentScale / 100)) + 'px';
@@ -760,6 +779,7 @@
             };
         }
 
+        /* --- True 300 DPI Export Logic --- */
         async function downloadFiles() {
             if (grid.length === 0) return;
             
@@ -776,12 +796,24 @@
             await new Promise(resolve => setTimeout(resolve, 200));
 
             try {
-                const gameCanvas = await html2canvas(gameArea, { backgroundColor: '#ffffff', scale: 2 });
+                // Calculate scale to hit EXACTLY 300 DPI based on chosen inches
+                const pW = parseFloat(document.getElementById('page-w').value) || 8.5;
+                const targetPixelsWidth = pW * 300; 
+                const currentDomWidth = gameArea.offsetWidth;
+                const printScale = targetPixelsWidth / currentDomWidth;
+
+                const gameCanvas = await html2canvas(gameArea, { 
+                    backgroundColor: '#ffffff', 
+                    scale: printScale 
+                });
                 triggerDownload(gameCanvas.toDataURL('image/png'), 'word-search.png');
 
                 await new Promise(resolve => setTimeout(resolve, 500));
 
-                const keyCanvas = await html2canvas(keyArea, { backgroundColor: '#ffffff', scale: 2 });
+                const keyCanvas = await html2canvas(keyArea, { 
+                    backgroundColor: '#ffffff', 
+                    scale: printScale 
+                });
                 triggerDownload(keyCanvas.toDataURL('image/png'), 'word-search-key.png');
 
             } catch (err) {
