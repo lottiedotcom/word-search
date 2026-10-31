@@ -151,14 +151,13 @@
         
         .key-title { font-size: 1.8em; margin-bottom: 15px;}
 
-        /* Safest responsive grid container setup */
         .grid-wrapper {
             width: 100%;
-            flex-grow: 1; /* Takes up all remaining space between title and word list */
+            flex-grow: 1; 
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 0; /* Prevents overflow */
+            min-height: 0; 
             z-index: 2;
         }
 
@@ -178,7 +177,6 @@
             text-transform: uppercase;
             color: #000;
             transition: background 0.2s;
-            /* Font size is now injected securely via JS */
             font-size: var(--cell-font-size, 16px); 
         }
         
@@ -331,7 +329,6 @@
         let startCell = null;
         let currentPath = [];
 
-        // This is the new bulletproof engine that mathematically sizes the grid safely 
         const gridResizeObserver = new ResizeObserver(entries => {
             for (let entry of entries) {
                 const wrapper = entry.target;
@@ -341,7 +338,6 @@
                 const w = wrapper.clientWidth;
                 const h = wrapper.clientHeight;
                 
-                // Find exactly how big the grid can be while staying perfectly proportioned
                 const wrapperRatio = w / h;
                 const gridRatio = numCols / numRows;
                 
@@ -354,7 +350,6 @@
                     finalHeight = w / gridRatio;
                 }
                 
-                // Securely inject heights and widths directly into the CSS
                 gridEl.style.width = `${finalWidth}px`;
                 gridEl.style.height = `${finalHeight}px`;
                 
@@ -363,7 +358,6 @@
             }
         });
 
-        // Starts listening to the grid boundaries once the site loads
         window.onload = () => {
             gridResizeObserver.observe(document.getElementById('main-grid-wrapper'));
             gridResizeObserver.observe(document.getElementById('key-grid-wrapper'));
@@ -376,7 +370,6 @@
             numCols = parseInt(document.getElementById('cols-input').value) || 15;
             numRows = parseInt(document.getElementById('rows-input').value) || 15;
 
-            // Apply physical page dimensions for printing perfectly
             const pW = parseFloat(document.getElementById('page-w').value) || 8.5;
             const pH = parseFloat(document.getElementById('page-h').value) || 11;
             
@@ -408,7 +401,9 @@
             solutionMap = Array.from({length: numRows}, () => Array(numCols).fill(false));
             
             let allPlaced = true;
-            wordsToFind.sort((a, b) => b.length - a.length);
+            
+            // Randomizes the placement order of words slightly to prevent pattern predictability
+            wordsToFind.sort((a, b) => (b.length - a.length) || (Math.random() - 0.5));
 
             for (let word of wordsToFind) {
                 if (!placeWord(word)) {
@@ -434,26 +429,31 @@
                 [0, -1], [-1, 0], [-1, -1], [1, -1]
             ];
             
-            let placed = false;
-            let attempts = 0;
+            let validSpots = [];
             
-            while (!placed && attempts < 200) {
-                attempts++;
-                let dir = directions[Math.floor(Math.random() * directions.length)];
-                let r = Math.floor(Math.random() * numRows);
-                let c = Math.floor(Math.random() * numCols);
-                
-                if (canPlace(word, r, c, dir)) {
-                    for (let i = 0; i < word.length; i++) {
-                        let currentR = r + i * dir[0];
-                        let currentC = c + i * dir[1];
-                        grid[currentR][currentC] = word[i];
-                        solutionMap[currentR][currentC] = true;
+            // DEEP SCAN: Scans every single square and direction for a valid fit
+            for (let r = 0; r < numRows; r++) {
+                for (let c = 0; c < numCols; c++) {
+                    for (let dir of directions) {
+                        if (canPlace(word, r, c, dir)) {
+                            validSpots.push({ r, c, dir });
+                        }
                     }
-                    placed = true;
                 }
             }
-            return placed;
+
+            if (validSpots.length === 0) return false;
+
+            // Pick completely uniformly from all mathematical possibilities
+            let chosen = validSpots[Math.floor(Math.random() * validSpots.length)];
+            
+            for (let i = 0; i < word.length; i++) {
+                let currentR = chosen.r + i * chosen.dir[0];
+                let currentC = chosen.c + i * chosen.dir[1];
+                grid[currentR][currentC] = word[i];
+                solutionMap[currentR][currentC] = true;
+            }
+            return true;
         }
 
         function canPlace(word, r, c, dir) {
@@ -467,7 +467,8 @@
         }
 
         function fillEmptyCells() {
-            const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            // WEIGHTED ALPHABET: Based on English frequency to hide words naturally
+            const letters = "EEEEEEEEEEAAAAAAAANNNNNNNNIIIIIIIIOOOOOOOOSTTTTTTTRRRRRRRLLLLLLDHHHCCCCMMMMUUUGGPWYYBVKXJQZ";
             for (let r = 0; r < numRows; r++) {
                 for (let c = 0; c < numCols; c++) {
                     if (grid[r][c] === '') {
