@@ -120,12 +120,12 @@
             flex-direction: column;
             gap: 40px;
             width: 100%;
-            max-width: 800px; /* Base preview size on screen */
+            max-width: 800px;
         }
 
         .game-area {
             background: var(--panel-bg);
-            padding: 6%;
+            padding: 5%;
             border: 4px solid var(--border-color);
             outline: 1px solid var(--border-color);
             outline-offset: -8px;
@@ -134,32 +134,31 @@
             align-items: center;
             position: relative; 
             overflow: hidden; 
-            
-            /* Responsive Print Container Setup */
             width: 100%;
             box-sizing: border-box;
-            container-type: inline-size; /* Allows font sizes to scale perfectly with the box */
         }
 
         h1 { 
             margin-top: 0px; 
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             font-family: 'Cinzel', serif;
-            font-size: max(24px, 6cqw); /* Scales perfectly with page size */
+            font-size: 2.2em;
             text-align: center; 
             letter-spacing: 2px;
             text-transform: uppercase;
             z-index: 2;
         }
         
-        .key-title { font-size: max(20px, 5cqw); margin-bottom: 20px;}
+        .key-title { font-size: 1.8em; margin-bottom: 15px;}
 
+        /* Safest responsive grid container setup */
         .grid-wrapper {
             width: 100%;
-            flex-grow: 1;
+            flex-grow: 1; /* Takes up all remaining space between title and word list */
             display: flex;
             align-items: center;
             justify-content: center;
+            min-height: 0; /* Prevents overflow */
             z-index: 2;
         }
 
@@ -168,10 +167,6 @@
             background: transparent;
             user-select: none;
             touch-action: none;
-            /* Container size constraints to ensure it never breaks out of the page */
-            max-width: 100%;
-            max-height: 100%;
-            container-type: inline-size;
         }
 
         .cell {
@@ -183,8 +178,8 @@
             text-transform: uppercase;
             color: #000;
             transition: background 0.2s;
-            /* Font size scales exactly relative to the number of columns to fit perfectly */
-            font-size: calc((100cqi / var(--num-cols)) * 0.65);
+            /* Font size is now injected securely via JS */
+            font-size: var(--cell-font-size, 16px); 
         }
         
         #word-search-grid .cell:hover { background-color: #f0f0f0; }
@@ -202,19 +197,19 @@
         }
 
         .word-list {
-            margin-top: 30px;
+            margin-top: 20px;
             width: 100%;
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
             gap: 12px;
             text-align: center;
             border-top: 1px solid #000;
-            padding-top: 20px;
+            padding-top: 15px;
             z-index: 2;
         }
 
         .word-item {
-            font-size: max(12px, 2.5cqw);
+            font-size: 1em;
             font-weight: 700;
             letter-spacing: 1px;
             text-transform: uppercase;
@@ -245,7 +240,6 @@
             color: #555;
             margin-top: 10px;
         }
-
     </style>
 </head>
 <body>
@@ -310,7 +304,7 @@
         <!-- Playable Game Area (Hidden until generated) -->
         <div class="game-area" id="game-area" style="display:none;">
             <h1 id="display-title"></h1>
-            <div class="grid-wrapper">
+            <div class="grid-wrapper" id="main-grid-wrapper">
                 <div id="word-search-grid" class="grid-container"></div>
             </div>
             <div class="word-list" id="word-list"></div>
@@ -319,7 +313,7 @@
         <!-- Answer Key Area -->
         <div class="game-area" id="key-area" style="display:none;">
             <h1 class="key-title">Answer Key</h1>
-            <div class="grid-wrapper">
+            <div class="grid-wrapper" id="key-grid-wrapper">
                 <div id="key-grid" class="grid-container"></div>
             </div>
         </div>
@@ -337,6 +331,44 @@
         let startCell = null;
         let currentPath = [];
 
+        // This is the new bulletproof engine that mathematically sizes the grid safely 
+        const gridResizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                const wrapper = entry.target;
+                const gridEl = wrapper.querySelector('.grid-container');
+                if (!gridEl || numCols === 0 || numRows === 0) continue;
+                
+                const w = wrapper.clientWidth;
+                const h = wrapper.clientHeight;
+                
+                // Find exactly how big the grid can be while staying perfectly proportioned
+                const wrapperRatio = w / h;
+                const gridRatio = numCols / numRows;
+                
+                let finalWidth, finalHeight;
+                if (wrapperRatio > gridRatio) {
+                    finalHeight = h;
+                    finalWidth = h * gridRatio;
+                } else {
+                    finalWidth = w;
+                    finalHeight = w / gridRatio;
+                }
+                
+                // Securely inject heights and widths directly into the CSS
+                gridEl.style.width = `${finalWidth}px`;
+                gridEl.style.height = `${finalHeight}px`;
+                
+                const fontSize = (finalWidth / numCols) * 0.65;
+                gridEl.style.setProperty('--cell-font-size', `${fontSize}px`);
+            }
+        });
+
+        // Starts listening to the grid boundaries once the site loads
+        window.onload = () => {
+            gridResizeObserver.observe(document.getElementById('main-grid-wrapper'));
+            gridResizeObserver.observe(document.getElementById('key-grid-wrapper'));
+        };
+
         function generateGame() {
             const title = document.getElementById('title-input').value;
             let rawWords = document.getElementById('words-input').value;
@@ -344,7 +376,7 @@
             numCols = parseInt(document.getElementById('cols-input').value) || 15;
             numRows = parseInt(document.getElementById('rows-input').value) || 15;
 
-            // Apply specific physical dimensions to the visual box
+            // Apply physical page dimensions for printing perfectly
             const pW = parseFloat(document.getElementById('page-w').value) || 8.5;
             const pH = parseFloat(document.getElementById('page-h').value) || 11;
             
@@ -448,9 +480,6 @@
         function applyGridStyles(el) {
             el.style.gridTemplateColumns = `repeat(${numCols}, 1fr)`;
             el.style.gridTemplateRows = `repeat(${numRows}, 1fr)`;
-            el.style.aspectRatio = `${numCols} / ${numRows}`;
-            // Let the cell size scale dynamically based on columns
-            el.style.setProperty('--num-cols', numCols);
         }
 
         function renderGrid() {
@@ -779,7 +808,6 @@
             };
         }
 
-        /* --- True 300 DPI Export Logic --- */
         async function downloadFiles() {
             if (grid.length === 0) return;
             
@@ -796,7 +824,6 @@
             await new Promise(resolve => setTimeout(resolve, 200));
 
             try {
-                // Calculate scale to hit EXACTLY 300 DPI based on chosen inches
                 const pW = parseFloat(document.getElementById('page-w').value) || 8.5;
                 const targetPixelsWidth = pW * 300; 
                 const currentDomWidth = gameArea.offsetWidth;
