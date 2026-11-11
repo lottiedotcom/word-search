@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -194,12 +195,14 @@
             border-radius: 4px;
         }
 
+        /* NEW: Flexbox layout for Word List prevents overlap of long words */
         .word-list {
             margin-top: 20px;
             width: 100%;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-            gap: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px 25px; /* Added horizontal gap to prevent crowding */
             text-align: center;
             border-top: 1px solid #000;
             padding-top: 15px;
@@ -207,11 +210,12 @@
         }
 
         .word-item {
-            font-size: 1em;
+            font-size: max(12px, 2cqw);
             font-weight: 700;
             letter-spacing: 1px;
             text-transform: uppercase;
             transition: all 0.3s;
+            white-space: nowrap; /* Forces long words to stay on one line cleanly */
         }
         .word-item.found-word {
             text-decoration: line-through;
@@ -270,7 +274,7 @@
         </div>
 
         <div class="form-group">
-            <label>Words</label>
+            <label>Words (Separate by commas)</label>
             <textarea id="words-input" placeholder="Type words here, separated by commas..."></textarea>
         </div>
 
@@ -402,7 +406,7 @@
             
             let allPlaced = true;
             
-            // Randomizes the placement order of words slightly to prevent pattern predictability
+            // Sort by length but allow slight shuffling so generation is unique
             wordsToFind.sort((a, b) => (b.length - a.length) || (Math.random() - 0.5));
 
             for (let word of wordsToFind) {
@@ -423,6 +427,7 @@
             renderWordList();
         }
 
+        // NEW: Anti-Crowding Logic
         function placeWord(word) {
             const directions = [
                 [0, 1], [1, 0], [1, 1], [-1, 1],
@@ -431,12 +436,18 @@
             
             let validSpots = [];
             
-            // DEEP SCAN: Scans every single square and direction for a valid fit
             for (let r = 0; r < numRows; r++) {
                 for (let c = 0; c < numCols; c++) {
                     for (let dir of directions) {
                         if (canPlace(word, r, c, dir)) {
-                            validSpots.push({ r, c, dir });
+                            // Calculate how much "empty" space this spot uses
+                            let emptyCount = 0;
+                            for (let i = 0; i < word.length; i++) {
+                                if (grid[r + i * dir[0]][c + i * dir[1]] === '') {
+                                    emptyCount++;
+                                }
+                            }
+                            validSpots.push({ r, c, dir, emptyCount });
                         }
                     }
                 }
@@ -444,8 +455,14 @@
 
             if (validSpots.length === 0) return false;
 
-            // Pick completely uniformly from all mathematical possibilities
-            let chosen = validSpots[Math.floor(Math.random() * validSpots.length)];
+            // Sort spots to prioritize the ones that fill the most empty space
+            validSpots.sort((a, b) => b.emptyCount - a.emptyCount);
+            
+            // Only randomly pick from the top 15% best, most isolating spots
+            let topCutoff = Math.max(1, Math.floor(validSpots.length * 0.15));
+            let bestSpots = validSpots.slice(0, topCutoff);
+            
+            let chosen = bestSpots[Math.floor(Math.random() * bestSpots.length)];
             
             for (let i = 0; i < word.length; i++) {
                 let currentR = chosen.r + i * chosen.dir[0];
@@ -467,7 +484,7 @@
         }
 
         function fillEmptyCells() {
-            // WEIGHTED ALPHABET: Based on English frequency to hide words naturally
+            // Uses standard English letter frequencies so hidden words blend in better
             const letters = "EEEEEEEEEEAAAAAAAANNNNNNNNIIIIIIIIOOOOOOOOSTTTTTTTRRRRRRRLLLLLLDHHHCCCCMMMMUUUGGPWYYBVKXJQZ";
             for (let r = 0; r < numRows; r++) {
                 for (let c = 0; c < numCols; c++) {
